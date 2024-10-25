@@ -14,6 +14,7 @@ params = {
     "is_tab": False,
 
     "enable_trigger_word": True,
+    "enable_linear_act" : False,
     "trigger_word": "stroke(",
     "visible_input_modfier_function": True,
     "enable_input_modfier_function": True,
@@ -28,20 +29,21 @@ params = {
 }
 
 import asyncio, websockets, json
-async def send_command(duration, intensity, oscillation, rotation_clockwise=None):
+async def send_command(duration, intensity, oscillation, use_linear, rotation_clockwise=None):
     command = {
         "duration": duration,
         "intensity": intensity,
         "oscillation": oscillation,
-        "rotation_clockwise": rotation_clockwise
+        "rotation_clockwise": rotation_clockwise,
+        "use_linear": use_linear
     }
     async with websockets.connect(f'ws://{params["router_ip"]}:{params["router_port"]}') as websocket:
         await websocket.send(json.dumps(command))
 
-def run_command(duration, intensity, oscillation):
+def run_command(duration, intensity, oscillation, use_linear):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(send_command(duration, intensity, oscillation))
+    loop.run_until_complete(send_command(duration, intensity, oscillation, use_linear))
 
 def chat_input_modifier(text, visible_text, state):
     string_before = '{"input": "'
@@ -83,8 +85,14 @@ def output_modifier(string, state, is_chat=False):
         substring = last_message_AI[open_parenthesis_index+1 : close_parenthesis_index]    
         try:
             intensity = max(0.0, min(float(substring), 1.0)) 
-            logger.info(f"Intensity extracted from {params['trigger_word']} {intensity} ):: run_command: {duration}, {intensity}, {oscillation}")
-            run_command(duration, intensity, oscillation)
+            if params['enable_linear_act']:
+                power = 0 if intensity > 0 else 1
+                stroke_interval = int(200+((1-intensity)*890))
+                logger.info(f"Intensity extracted from {params['trigger_word']} {intensity} ):: run_command: {stroke_interval}, {power}, {oscillation}")
+                run_command(duration=stroke_interval, intensity=power, oscillation=oscillation, use_linear=True)
+            else:        
+                logger.info(f"Intensity extracted from {params['trigger_word']} {intensity} ):: run_command: {duration}, {intensity}, {oscillation}")
+                run_command(duration, intensity, oscillation, use_linear=False)
         except Exception as e:
             logger.info(f"error string extraction: {e}")
         
@@ -98,6 +106,7 @@ def ui():
             with gr.Row():
                 with gr.Column(min_width=100):
                     checkbox_trigger_word = gr.Checkbox(label="Enable Buttplug and trigger_word", value=params["enable_trigger_word"])
+                    checkbox_linear_act = gr.Checkbox(label="Enable linear actuator", value=params["enable_linear_act"])
                     textbox_trigger_word = gr.Textbox(label="Trigger word", value=params['trigger_word'], visible=params["enable_trigger_word"])
                 with gr.Column(min_width=100):
                     checkbox_input_modfier_function = gr.Checkbox(label="Enable input_modfier_function", value=params["enable_input_modfier_function"])
@@ -112,6 +121,7 @@ def ui():
 
             # Event functions to update the params dictionary in the backend
             checkbox_trigger_word.change(lambda x: params.update({"enable_trigger_word": x}), checkbox_trigger_word, None)
+            checkbox_linear_act.change(lambda x: params.update({"enable_linear_act": x}), checkbox_linear_act, None)
             textbox_trigger_word.change(lambda x: params.update({"trigger_word": x}), textbox_trigger_word, None)
             checkbox_input_modfier_function.change(lambda x: params.update({"enable_input_modfier_function": x}), checkbox_input_modfier_function, None)
             textbox_input_modfier_word.change(lambda x: params.update({"string_after_input_modfier_function": x}), textbox_input_modfier_word, None)
