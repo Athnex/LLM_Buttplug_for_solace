@@ -8,7 +8,7 @@ class DeviceController:
         self.devices, self.client = self.loop.run_until_complete(self.setup(intiface_central_ip, intiface_central_port))
         self.current_tasks = []
 
-    async def control_device(self, device, duration, intensity, oscillation=False, rotation_clockwise=None):
+    async def control_device(self, device, duration, intensity, oscillation=False, rotation_clockwise=None, use_linear = False):
         """
         Function to control all device on duration, intensity, oscillation and rotation
         :param device: buttplug Device object
@@ -18,27 +18,32 @@ class DeviceController:
         :param oscillation: True for infinite oscillation between 0.0 to "intensity".
         :param rotation_clockwise: For rotatory actuator, rotation direction. True for clockwise, False for anticlockwise.
         """
+        print("Linear active" if use_linear else "Scalar active")
         try:
             original_intensity = intensity; inactive_state = 0
-            if len(device.actuators) != 0:
-                while True:
-                    await device.actuators[0].command(intensity)
-                    await asyncio.sleep(duration/1000)
-                    # print(" actuators ..." + str(duration) + " intensity:" +  str(intensity))
-                    if oscillation: intensity = original_intensity if intensity == inactive_state else inactive_state; 
-                    else: break
-                await device.actuators[0].command(0.0)
-    
-            if len(device.linear_actuators) != 0:
-                inactive_state = 1
-                while True:
-                    await device.linear_actuators[0].command(duration, intensity)
-                    await asyncio.sleep(duration/1100)
-                    # print(" linear actuators ..." + str(duration) + " intensity:" +  str(intensity))
-                    if oscillation: intensity = original_intensity if intensity == inactive_state else inactive_state; 
-                    else: break
-        
+            if not use_linear:
+                if len(device.actuators) != 0:
+                    #print("Scalar active")
+                    while True:
+                        await device.actuators[0].command(intensity)
+                        await asyncio.sleep(duration/1000)
+                        # print(" actuators ..." + str(duration) + " intensity:" +  str(intensity))
+                        if oscillation: intensity = original_intensity if intensity == inactive_state else inactive_state; 
+                        else: break
+                    await device.actuators[0].command(0.0)
+            else:
+                if len(device.linear_actuators) != 0:
+                    #print("Linear active")
+                    inactive_state = 1
+                    while True:
+                        await device.linear_actuators[0].command(duration, intensity)
+                        await asyncio.sleep(duration/1000)
+                        # print(" linear actuators ..." + str(duration) + " intensity:" +  str(intensity))
+                        if oscillation: intensity = original_intensity if intensity == inactive_state else inactive_state; 
+                        else: break
+
             if len(device.rotatory_actuators) != 0:
+                print("Rotatory")
                 while True:
                     await device.rotatory_actuators[0].command(intensity, rotation_clockwise)
                     await asyncio.sleep(duration/1000)
@@ -56,6 +61,9 @@ class DeviceController:
         await client.start_scanning()
         await asyncio.sleep(10)
         await client.stop_scanning()
+        print(client.devices[0].name)
+        print(client.devices[0].actuators)
+        print(client.devices[0].linear_actuators)
         devices = []
         if len(client.devices) != 0:
             for index, device_id in enumerate(client.devices.keys()):
@@ -74,7 +82,7 @@ class DeviceController:
             task.cancel()
         self.current_tasks = []
         for device in self.devices:
-            task = asyncio.create_task(self.control_device(device, command['duration'], command['intensity'], command['oscillation'], command.get('rotation_clockwise', None)))  # Create a new task
+            task = asyncio.create_task(self.control_device(device, command['duration'], command['intensity'], command['oscillation'], command.get('rotation_clockwise', None), command['use_linear']))  # Create a new task
             self.current_tasks.append(task)
         await asyncio.gather(*self.current_tasks)
 
