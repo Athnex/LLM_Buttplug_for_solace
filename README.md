@@ -1,6 +1,6 @@
 ## Overview
 
-This is a Fork of PsychoSmiley's LLM_Buttplug Extension for the text-generation-webui. The original extension makes linear actuators like the solace pro move in only short strokes, and the oscillation value makes it turn on and off in time with the oscillation value, which I find unfitting for a stroker like the solace. In this Fork an additional checkbox is added, to tell the program if you are using a linear actuator, if checked, the linear actuator will do constantly full strokes and the value given by the AI will determine how fast the stroker goes. Apart from that all original functions remain.
+This is a Fork of PsychoSmiley's LLM_Buttplug Extension for the text-generation-webui. The original extension makes linear actuators like the solace pro move in only short strokes, and the oscillation value makes it turn on and off in time with the oscillation value, which I find unfitting for a stroker like the solace. In this Fork an additional checkbox is added, to tell the program if you are using a linear actuator, if checked, the linear actuator will do constantly full strokes and the value given by the AI will determine how fast the stroker goes. Apart from that all original functions remain. I tested this with the Solace Pro, it might work for similar Toys with speed and stroke-depth settings.
 
 ## Original README by PsychoSmiley
 
